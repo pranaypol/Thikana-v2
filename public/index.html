@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Thikana — Hotel Booking, India</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">थि</span>
+        <span class="brand-name">Thikana</span>
+      </div>
+      <nav class="topbar-nav">
+        <div id="authNav" class="auth-nav">
+          <button class="nav-link" id="loginBtn">Sign in</button>
+          <button class="nav-link" id="registerBtn">Sign up</button>
+        </div>
+        <div id="userNav" class="user-nav" hidden>
+          <span class="nav-user-name" id="userNameDisplay"></span>
+          <button class="nav-link" id="myBookingsBtn">My Bookings</button>
+          <button class="nav-link" id="logoutBtn">Sign out</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <p class="eyebrow">ठिकाना · a place to stay</p>
+      <h1 class="hero-title">Find your <em>thikana</em><br>anywhere in India.</h1>
+      <p class="hero-sub">Live hotel listings pulled straight from Google — search a city, pick your dates, book your stay.</p>
+
+      <form class="search-ticket" id="searchForm">
+        <div class="ticket-field ticket-field--wide">
+          <label for="city">Destination</label>
+          <input type="text" id="city" name="city" placeholder="Jaipur, Goa, Varanasi…" required autocomplete="off" />
+        </div>
+        <div class="ticket-divider" aria-hidden="true"></div>
+        <div class="ticket-field">
+          <label for="checkIn">Check-in</label>
+          <input type="date" id="checkIn" name="checkIn" required />
+        </div>
+        <div class="ticket-field">
+          <label for="checkOut">Check-out</label>
+          <input type="date" id="checkOut" name="checkOut" required />
+        </div>
+        <div class="ticket-field ticket-field--narrow">
+          <label for="guests">Guests</label>
+          <input type="number" id="guests" name="guests" min="1" value="2" required />
+        </div>
+        <button type="submit" class="btn-search">Search stays</button>
+      </form>
+    </div>
+  </section>
+
+  <main class="wrap results-wrap">
+    <div id="statusBar" class="status-bar" hidden></div>
+    <div id="resultsMeta" class="results-meta" hidden></div>
+    <div id="resultsGrid" class="results-grid"></div>
+  </main>
+
+  <!-- Booking modal -->
+  <div class="modal-backdrop" id="bookingBackdrop" hidden>
+    <div class="modal booking-modal" role="dialog" aria-modal="true" aria-labelledby="bookingModalTitle">
+      <button type="button" class="modal-close" id="closeBookingModal" aria-label="Close">&times;</button>
+      <p class="eyebrow">confirm your stay</p>
+      <h2 id="bookingModalTitle">—</h2>
+      <p class="modal-address" id="bookingModalAddress"></p>
+
+      <form id="bookingForm" class="booking-form">
+        <input type="hidden" id="bf_placeId" />
+        <input type="hidden" id="bf_hotelName" />
+        <input type="hidden" id="bf_hotelAddress" />
+        <input type="hidden" id="bf_pricePerNight" />
+
+        <div class="form-row">
+          <label for="bf_checkIn">Check-in</label>
+          <input type="date" id="bf_checkIn" required />
+        </div>
+        <div class="form-row">
+          <label for="bf_checkOut">Check-out</label>
+          <input type="date" id="bf_checkOut" required />
+        </div>
+        <div class="form-row">
+          <label for="bf_rooms">Rooms</label>
+          <input type="number" id="bf_rooms" min="1" value="1" required />
+        </div>
+        <div class="form-row">
+          <label for="bf_guests">Guests</label>
+          <input type="number" id="bf_guests" min="1" value="2" required />
+        </div>
+        <div class="form-row form-row--full">
+          <label for="bf_name">Full name</label>
+          <input type="text" id="bf_name" required />
+        </div>
+        <div class="form-row form-row--full">
+          <label for="bf_email">Email</label>
+          <input type="email" id="bf_email" required />
+        </div>
+        <div class="form-row form-row--full">
+          <label for="bf_phone">Phone</label>
+          <input type="tel" id="bf_phone" placeholder="+91 " />
+        </div>
+        <div class="form-row form-row--full">
+          <label for="bf_paymentMethod">Payment method</label>
+          <select id="bf_paymentMethod" required>
+            <option value="credit_card">Credit Card</option>
+            <option value="debit_card">Debit Card</option>
+            <option value="upi">UPI</option>
+            <option value="net_banking">Net Banking</option>
+            <option value="pay_at_hotel">Pay at Hotel</option>
+          </select>
+        </div>
+        <div class="form-row form-row--full booking-summary" id="bookingTotal">Estimated total: ₹0</div>
+
+        <button type="submit" class="btn-confirm">Pay &amp; confirm booking</button>
+        <p class="modal-disclaimer">This reserves your stay in our booking system and processes payment in real time when applicable.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirmation modal -->
+  <div class="modal-backdrop" id="confirmBackdrop" hidden>
+    <div class="modal confirm-modal" role="dialog" aria-modal="true">
+      <button type="button" class="modal-close" id="closeConfirmModal" aria-label="Close">&times;</button>
+      <p class="eyebrow">booking confirmed</p>
+      <h2>You're all set.</h2>
+      <div class="confirm-ticket" id="confirmTicket"></div>
+      <button type="button" class="btn-search" id="confirmDone">Done</button>
+    </div>
+  </div>
+
+  <!-- My bookings modal -->
+  <div class="modal-backdrop" id="myBookingsBackdrop" hidden>
+    <div class="modal bookings-modal" role="dialog" aria-modal="true">
+      <button type="button" class="modal-close" id="closeMyBookings" aria-label="Close">&times;</button>
+      <p class="eyebrow">look up stays</p>
+      <h2>My bookings</h2>
+      <form id="lookupForm" class="lookup-form">
+        <input type="email" id="lookupEmail" placeholder="Email used to book" required />
+        <button type="submit" class="btn-search">Look up</button>
+      </form>
+      <div id="myBookingsList" class="my-bookings-list"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Thikana runs on the Google Places API for live listings. Hotel data belongs to Google and the respective properties.</p>
+    </div>
+  </footer>
+
+<script src="app.js"></script>
+</body>
+</html>

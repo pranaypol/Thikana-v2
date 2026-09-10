@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Account - Thikana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .auth-page {
+    display: flex;
+    min-height: 100vh;
+    background: var(--indigo);
+    color: var(--ivory);
+  }
+  .auth-page-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 40px 20px;
+  }
+  .auth-page-card {
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: 48px 40px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(16,27,51,0.35);
+  }
+  .auth-page-card .eyebrow {
+    margin-top: 0;
+  }
+  .auth-page-card h1 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  .auth-page-brand {
+    text-align: center;
+    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .auth-page-brand-mark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--marigold);
+    border: 1.5px solid var(--marigold);
+    border-radius: 50%;
+    width: 48px; height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-page-brand-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--indigo);
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: var(--teal);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .back-link:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-page-content">
+      <div class="auth-page-card">
+        <a href="/" class="back-link">← Back to home</a>
+        
+        <div class="auth-page-brand">
+          <div class="auth-page-brand-mark">थि</div>
+          <div class="auth-page-brand-name">Thikana</div>
+        </div>
+
+        <p class="eyebrow">Join us</p>
+        <h1>Create account</h1>
+
+        <form id="registerForm" class="auth-form">
+          <div class="form-row">
+            <label for="registerName">Full name</label>
+            <input type="text" id="registerName" required />
+          </div>
+          <div class="form-row">
+            <label for="registerEmail">Email</label>
+            <input type="email" id="registerEmail" required />
+          </div>
+          <div class="form-row">
+            <label for="registerPassword">Password (min 6 characters)</label>
+            <input type="password" id="registerPassword" required />
+          </div>
+          <button type="submit" class="btn-search">Create account</button>
+          <div id="registerError" class="error-message" hidden></div>
+        </form>
+
+        <p class="auth-switch" style="margin-top: 20px;">
+          Already have an account? <a href="/login.html">Sign in</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let authToken = localStorage.getItem('authToken');
+    
+    // If already logged in, redirect to home
+    if (authToken) {
+      window.location.href = '/';
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('registerName').value.trim();
+      const email = document.getElementById('registerEmail').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const errorDiv = document.getElementById('registerError');
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.error || 'Registration failed';
+          errorDiv.hidden = false;
+          return;
+        }
+
+        localStorage.setItem('authToken', data.token);
+        window.location.href = '/';
+      } catch (err) {
+        errorDiv.textContent = 'Could not reach the server.';
+        errorDiv.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>
