@@ -2,7 +2,7 @@
 
 A full-stack hotel search & booking app:
 
-- **Live hotel data** for any Indian city via the **Geoapify Places API** (built on OpenStreetMap — free, no credit card required).
+- **Live hotel data** for any Indian city via the **Google Places API** (plus Google Geocoding to resolve the city).
 - **Real database** (SQLite, via `better-sqlite3`) that stores confirmed bookings with a unique confirmation code.
 - Plain HTML/CSS/JS frontend, Node.js + Express backend.
 
@@ -12,20 +12,21 @@ This app gives you **real hotel listings** and a **real booking record in your o
 
 It does **not** place an actual reservation into a hotel's own front-desk / PMS system, and it does **not** take payment. No public API lets you do that directly — real booking flows (Booking.com, MakeMyTrip, Goibibo, Expedia) require a signed commercial partnership with an OTA or hotel chain, plus PCI-compliant payment processing (e.g. Razorpay/Stripe). If you want that, the next step is applying for API access with one of those providers and wiring their booking + payment endpoints into the `bookings.js` route.
 
-Because listings come from OpenStreetMap data (via Geoapify) rather than Google, you get name, address, coordinates, and phone/website where available — but no star ratings, review counts, or photos, since that data belongs to Google specifically.
+Listings come from Google Places, so you get name, address, coordinates, phone/website, star ratings, and a photo where available.
 
 ## Setup
 
-1. **Get a free Geoapify API key**
-   - Go to [geoapify.com](https://www.geoapify.com) → Sign Up (email only, no card).
-   - Create a project on the "My Projects" page — a key is generated automatically.
-   - Copy the key from the API Keys section.
+1. **Get a Google API key**
+   - Go to the [Google Cloud Console](https://console.cloud.google.com) → create/select a project.
+   - Enable the **Places API** and **Geocoding API** for that project.
+   - Go to "APIs & Services" → "Credentials" → "Create credentials" → "API key".
+   - Copy the generated key. (Billing must be enabled on the project, though Google's free monthly credit covers typical dev/test usage.)
 
 2. **Configure environment**
    ```bash
    cp .env.example .env
    # then edit .env and paste your key:
-   # GEOAPIFY_API_KEY=your_key_here
+   # GOOGLE_API_KEY=your_key_here
    ```
 
 3. **Install & run**
@@ -37,7 +38,7 @@ Because listings come from OpenStreetMap data (via Geoapify) rather than Google,
 
 ## How it works
 
-- `GET /api/hotels?city=Jaipur` → geocodes the city to find its boundary, then queries Geoapify's Places API for `accommodation.hotel`/`guest_house`/`hostel` within it. Returns name, address, coordinates, and phone/website where available. City lookups are cached in memory to save API calls on repeat searches.
+- `GET /api/hotels?city=Jaipur` → geocodes the city via Google's Geocoding API to get coordinates, then queries Google Places' Nearby Search for lodging around that point. Returns name, address, coordinates, rating, phone/website, and a photo where available. City lookups are cached in memory to save API calls on repeat searches.
 - `POST /api/bookings` → validates and writes a booking row into `bookings.db` (SQLite), returns a generated confirmation code.
 - `GET /api/bookings/:email` → looks up all bookings for a guest.
 - `DELETE /api/bookings/:id` → marks a booking cancelled.
@@ -61,7 +62,7 @@ hotel-booking-app/
 
 ## Deploying
 
-- Any Node host works (Render, Railway, Fly.io, a VPS). Set `GEOAPIFY_API_KEY` as an environment variable on the host — don't commit `.env`.
+- Any Node host works (Render, Railway, Fly.io, a VPS). Set `GOOGLE_API_KEY` as an environment variable on the host — don't commit `.env`.
 - `bookings.db` is a file — for production-scale traffic, swap `better-sqlite3` for Postgres/MySQL (the `db.js` + `bookings.js` boundary is intentionally thin so this is a small change).
 
 ## Extending to real payments/reservations
