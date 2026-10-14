@@ -49,7 +49,9 @@ module.exports = {
     saveDb();
     return true;
   },
-
+  getAllBookings() {
+    return { count: dbData.bookings.length, bookings: dbData.bookings };
+  },
   // User management functions
   getUserByEmail(email) {
     return dbData.users.find(u => u.email === email) || null;

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { ratePerNightForPlace, nightsBetween } = require('../utils/pricing');
@@ -152,6 +153,35 @@ router.post('/', (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create booking', details: err.message });
+  }
+});
+
+router.get('/admin/all', (req, res) => {
+  const expectedToken = process.env.ADMIN_BOOKINGS_TOKEN;
+  if (!expectedToken) {
+    return res.status(503).json({ error: 'Admin booking access is not configured.' });
+  }
+
+  const authorization = req.get('authorization') || '';
+  const match = /^Bearer (.+)$/.exec(authorization);
+  if (!match) {
+    return res.status(401).json({ error: 'Admin authorization required.' });
+  }
+
+  const providedToken = Buffer.from(match[1]);
+  const configuredToken = Buffer.from(expectedToken);
+  if (
+    providedToken.length !== configuredToken.length ||
+    !crypto.timingSafeEqual(providedToken, configuredToken)
+  ) {
+    return res.status(401).json({ error: 'Invalid admin token.' });
+  }
+
+  try {
+    res.json(db.getAllBookings());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch bookings', details: err.message });
   }
 });
 
