@@ -1,7 +1,15 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
+// ...then your other requires
+
+
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const db = require('./db');
 
 const hotelsRouter = require('./routes/hotels');
 const bookingsRouter = require('./routes/bookings');
@@ -24,6 +32,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', googleApiKeyConfigured: !!process.env.GOOGLE_API_KEY });
 });
 
-app.listen(PORT, () => {
-  console.log(`🏨 India Hotel Booking server running at http://localhost:${PORT}`);
+async function startServer() {
+  await db.connectDB();
+  app.listen(PORT, () => {
+    console.log(`🏨 India Hotel Booking server running at http://localhost:${PORT}`);
+  });
+}
+
+startServer().catch(err => {
+  console.error('Database connection error:', err);
+  process.exit(1);
 });

@@ -14,7 +14,7 @@ function generateSessionToken() {
  * POST /api/auth/register
  * Body: { email, password, name }
  */
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
@@ -30,23 +30,23 @@ router.post('/register', (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    // Check if user already exists
-    const existingUser = db.getUserByEmail(email);
+    const existingUser = await db.getUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ error: 'User with this email already exists' });
     }
 
-    // Create new user (in production, hash password with bcrypt)
     const user = {
       email,
-      password, // WARNING: Never store plain passwords in production!
+      password,
       name,
       created_at: new Date().toISOString()
     };
 
-    db.addUser(user);
+    const added = await db.addUser(user);
+    if (!added) {
+      return res.status(409).json({ error: 'User with this email already exists' });
+    }
 
-    // Create session
     const token = generateSessionToken();
     sessions.set(token, { email, name, created_at: Date.now() });
 
@@ -65,7 +65,7 @@ router.post('/register', (req, res) => {
  * POST /api/auth/login
  * Body: { email, password }
  */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -73,17 +73,15 @@ router.post('/login', (req, res) => {
       return res.status(400).json({ error: 'email and password are required' });
     }
 
-    const user = db.getUserByEmail(email);
+    const user = await db.getUserByEmail(email);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // In production, use bcrypt to compare hashed password
     if (user.password !== password) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Create session
     const token = generateSessionToken();
     sessions.set(token, { email: user.email, name: user.name, created_at: Date.now() });
 

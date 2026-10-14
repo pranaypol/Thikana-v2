@@ -4,7 +4,7 @@ A full-stack hotel search & booking app:
 
 - **Live hotel data** for any Indian city via the **Google Places API** (plus Google Geocoding to resolve the city).
 - **User accounts** (register/login) with a simple in-memory session token.
-- **Real bookings**, stored in a local JSON file (`bookings.json`) with a unique confirmation code.
+- **Real bookings**, stored in MongoDB Atlas via Mongoose with a unique confirmation code.
 - **Payments**: Stripe-aware, but falls back to a mock payment reference for "pay at hotel" or when no Stripe key is configured.
 - **Email confirmations** via Gmail (nodemailer) — logs to console instead of sending if no Gmail credentials are set.
 - Plain HTML/CSS/JS frontend, Node.js + Express backend.
@@ -35,6 +35,7 @@ Listings come from Google Places, so you get name, address, coordinates, phone/w
    # then edit .env and paste your values:
    # GOOGLE_API_KEY=your_key_here
    # STRIPE_SECRET_KEY=your_key_here      (optional)
+   # MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/thikana?retryWrites=true&w=majority
    # GMAIL_USER=you@gmail.com             (optional)
    # GMAIL_PASS=your_16_char_app_password (optional)
    ```
@@ -51,7 +52,7 @@ Listings come from Google Places, so you get name, address, coordinates, phone/w
 - `GET /api/hotels?city=Jaipur` → geocodes the city via Google's Geocoding API to get coordinates, then queries Google Places' Nearby Search for lodging around that point. Returns name, address, coordinates, rating, phone/website, and a photo where available. City lookups are cached in memory to save API calls on repeat searches.
 - `POST /api/auth/register`, `POST /api/auth/login` → creates/authenticates a user, returns a session token (in-memory `Map`, demo-grade — not a production auth setup).
 - `POST /api/payments` → validates the payment method and amount; returns a mock payment reference for pay-at-hotel or when Stripe isn't configured.
-- `POST /api/bookings` → validates and writes a booking into `bookings.json`, returns a generated confirmation code, and sends (or logs) a confirmation email.
+- `POST /api/bookings` → validates and writes a booking into MongoDB, returns a generated confirmation code, and sends (or logs) a confirmation email.
 - `GET /api/bookings/:email` → looks up all bookings for a guest.
 - `GET /api/bookings/admin/all` → returns all bookings and requires `Authorization: Bearer <ADMIN_BOOKINGS_TOKEN>`. Set `ADMIN_BOOKINGS_TOKEN` as a secret environment variable; never publish or commit its value.
 - `DELETE /api/bookings/:id` → marks a booking cancelled.
@@ -61,7 +62,7 @@ Listings come from Google Places, so you get name, address, coordinates, phone/w
 ```
 Thikana/
 ├── server.js             # Express app entry point
-├── db.js                 # JSON-file data store (bookings.json) + user/booking helpers
+├── db.js                 # MongoDB/Mongoose data store + user/booking helpers
 ├── routes/
 │   ├── hotels.js          # Google Places/Geocoding integration
 │   ├── auth.js             # Register/login, in-memory sessions
@@ -84,7 +85,7 @@ Thikana/
 
 - Any Node host works (Render, Railway, Fly.io, a VPS). Set `GOOGLE_API_KEY` (and optionally `STRIPE_SECRET_KEY`, `GMAIL_USER`, `GMAIL_PASS`) as environment variables on the host — don't commit `.env`.
 - To access all bookings, generate a long random `ADMIN_BOOKINGS_TOKEN` and set it in the host's environment settings. Use it only from a trusted terminal or admin tool; the endpoint returns guests' personal details.
-- The booking store defaults to `bookings.json` in the project directory. Set `BOOKING_STORE_PATH` to a file on your host's persistent disk (for example, a mounted volume) to keep bookings across redeploys. The default local file, and local JSON files generally, won't survive ephemeral-host redeploys or safely support concurrent writers. For production-scale traffic, swap `db.js` for a real database (Postgres/MySQL/SQLite), keeping the same function signatures (`getBookingsByEmail`, `addBooking`, etc.) so the rest of the app doesn't need to change.
+- Set `MONGODB_URI` in your host environment to connect to MongoDB Atlas; the app uses the same exported function signatures (`getBookingsByEmail`, `addBooking`, etc.) while persisting data in MongoDB instead of a local JSON file.
 
 ## Extending to real payments/reservations
 

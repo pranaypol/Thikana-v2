@@ -33,13 +33,13 @@ function genConfirmationCode() {
  * POST /api/bookings
  * Body: { placeId, hotelName, hotelAddress, guestName, guestEmail, guestPhone,
  *         checkIn, checkOut, rooms, guests, paymentMethod }
- * Writes a confirmed booking to the configured JSON store.
+ * Writes a confirmed booking to the configured MongoDB store.
  *
  * The booking amount should follow the estimated total shown to the guest.
  * If the client sends an estimate, we use that value; otherwise we fall back
  * to the server-side calculation for compatibility.
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const {
       placeId, hotelName, hotelAddress,
@@ -84,92 +84,57 @@ router.post('/', (req, res) => {
     const id = uuidv4();
     const confirmationCode = genConfirmationCode();
 
-    // If `db` exposes an `addBooking` function (the JSON-backed store),
-    // create a booking object and save it there. Otherwise fall back to
-    // the SQL `prepare` path used by the original code.
-    if (typeof db.addBooking === 'function') {
-      const booking = {
-        id,
-        confirmation_code: confirmationCode,
-        place_id: placeId,
-        hotel_name: hotelName,
-        hotel_address: hotelAddress || null,
-        guest_name: guestName,
-        guest_email: guestEmail,
-        guest_phone: guestPhone || null,
-        check_in: checkIn,
-        check_out: checkOut,
-        rooms: roomCount,
-        guests,
-        rate_per_night: ratePerNight,
-        nights,
-        total_amount: totalAmount,
-        payment_method: normalizedPaymentMethod,
-        payment_status: paymentStatus || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pending' : 'succeeded'),
-        payment_provider: paymentProvider || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pay_at_hotel' : 'mock'),
-        payment_reference: paymentReference || null,
-        status: 'confirmed',
-        created_at: new Date().toISOString()
-      };
+    const booking = {
+      id,
+      confirmation_code: confirmationCode,
+      place_id: placeId,
+      hotel_name: hotelName,
+      hotel_address: hotelAddress || null,
+      guest_name: guestName,
+      guest_email: guestEmail,
+      guest_phone: guestPhone || null,
+      check_in: checkIn,
+      check_out: checkOut,
+      rooms: roomCount,
+      guests,
+      rate_per_night: ratePerNight,
+      nights,
+      total_amount: totalAmount,
+      payment_method: normalizedPaymentMethod,
+      payment_status: paymentStatus || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pending' : 'succeeded'),
+      payment_provider: paymentProvider || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pay_at_hotel' : 'mock'),
+      payment_reference: paymentReference || null,
+      status: 'confirmed',
+      created_at: new Date().toISOString()
+    };
 
-      db.addBooking(booking);
-      
-      // Send confirmation email asynchronously (don't wait for it)
-      sendBookingConfirmationEmail(booking).catch(err => 
-        console.error('Email sending error (non-blocking):', err.message)
-      );
-      
-      return res.status(201).json({ message: 'Booking confirmed', booking });
-    }
+    await db.addBooking(booking);
 
-    // Fallback to SQL insertion for environments using better-sqlite3
-    const stmt = db.prepare(`
-      INSERT INTO bookings
-        (id, confirmation_code, place_id, hotel_name, hotel_address,
-         guest_name, guest_email, guest_phone, check_in, check_out, rooms, guests,
-         rate_per_night, nights, total_amount, payment_method, payment_status, payment_provider, payment_reference)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      id, confirmationCode, placeId, hotelName, hotelAddress || null,
-      guestName, guestEmail, guestPhone || null, checkIn, checkOut, roomCount, guests,
-      ratePerNight, nights, totalAmount, normalizedPaymentMethod,
-      paymentStatus || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pending' : 'succeeded'),
-      paymentProvider || (normalizedPaymentMethod === 'pay_at_hotel' ? 'pay_at_hotel' : 'mock'),
-      paymentReference || null
+    sendBookingConfirmationEmail(booking).catch(err =>
+      console.error('Email sending error (non-blocking):', err.message)
     );
 
-    const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(id);
-    
-    // Send confirmation email asynchronously (don't wait for it)
-    if (booking) {
-      sendBookingConfirmationEmail(booking).catch(err => 
-        console.error('Email sending error (non-blocking):', err.message)
-      );
-    }
-    
-    res.status(201).json({ message: 'Booking confirmed', booking });
+    return res.status(201).json({ message: 'Booking confirmed', booking });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create booking', details: err.message });
   }
 });
 
-router.get('/admin/all', (req, res) => {
+router.get('/admin/all', async (req, res) => {
   const expectedToken = process.env.ADMIN_BOOKINGS_TOKEN;
   if (!expectedToken) {
     return res.status(503).json({ error: 'Admin booking access is not configured.' });
   }
 
   const authorization = req.get('authorization') || '';
-  const match = /^Bearer (.+)$/.exec(authorization);
+  const match = /^Bearer\s+(.+)$/i.exec(authorization);
   if (!match) {
     return res.status(401).json({ error: 'Admin authorization required.' });
   }
 
-  const providedToken = Buffer.from(match[1]);
-  const configuredToken = Buffer.from(expectedToken);
+  const providedToken = Buffer.from(match[1], 'utf8');
+  const configuredToken = Buffer.from(expectedToken, 'utf8');
   if (
     providedToken.length !== configuredToken.length ||
     !crypto.timingSafeEqual(providedToken, configuredToken)
@@ -178,27 +143,28 @@ router.get('/admin/all', (req, res) => {
   }
 
   try {
-    res.json(db.getAllBookings());
+    res.json(await db.getAllBookings());
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch bookings', details: err.message });
   }
 });
 
-/** GET /api/bookings/:email — list bookings for a guest */
-router.get('/:email', (req, res) => {
+/** GET /api/bookings/:email ? list bookings for a guest */
+router.get('/:email', async (req, res) => {
   try {
-    const bookings = db.getBookingsByEmail(req.params.email);
+    const bookings = await db.getBookingsByEmail(req.params.email);
     res.json({ count: bookings.length, bookings });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch bookings', details: err.message });
   }
 });
 
-/** DELETE /api/bookings/:id — cancel a booking */
-router.delete('/:id', (req, res) => {
+/** DELETE /api/bookings/:id ? cancel a booking */
+router.delete('/:id', async (req, res) => {
   try {
-    if (!db.cancelBooking(req.params.id)) {
+    const cancelled = await db.cancelBooking(req.params.id);
+    if (!cancelled) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     res.json({ message: 'Booking cancelled' });
