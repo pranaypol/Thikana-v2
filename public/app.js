@@ -154,7 +154,7 @@ function openBookingModal(hotel) {
   $('#bf_checkOut').value = $('#checkOut').value;
   $('#bf_rooms').value = 1;
   $('#bf_guests').value = $('#guests').value || 2;
-  $('#bf_paymentMethod').value = 'credit_card';
+  $('#bf_paymentMethod').value = 'pay_at_hotel';
 
   // Pre-populate guest info if user is logged in
   if (currentUser) {
