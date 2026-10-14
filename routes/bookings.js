@@ -32,7 +32,7 @@ function genConfirmationCode() {
  * POST /api/bookings
  * Body: { placeId, hotelName, hotelAddress, guestName, guestEmail, guestPhone,
  *         checkIn, checkOut, rooms, guests, paymentMethod }
- * Writes a confirmed booking row to the SQLite database.
+ * Writes a confirmed booking to the configured JSON store.
  *
  * The booking amount should follow the estimated total shown to the guest.
  * If the client sends an estimate, we use that value; otherwise we fall back
@@ -168,10 +168,12 @@ router.get('/:email', (req, res) => {
 /** DELETE /api/bookings/:id — cancel a booking */
 router.delete('/:id', (req, res) => {
   try {
-    const info = db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(req.params.id);
-    if (info.changes === 0) return res.status(404).json({ error: 'Booking not found' });
+    if (!db.cancelBooking(req.params.id)) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
     res.json({ message: 'Booking cancelled' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to cancel booking', details: err.message });
   }
 });

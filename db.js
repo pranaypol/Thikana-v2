@@ -1,22 +1,31 @@
 const fs = require('fs');
 const path = require('path');
 
-const dbFile = path.join(__dirname, 'bookings.json');
+const dbFile = process.env.BOOKING_STORE_PATH
+  ? path.resolve(process.env.BOOKING_STORE_PATH)
+  : path.join(__dirname, 'bookings.json');
 let dbData = { bookings: [], users: [] };
 
+fs.mkdirSync(path.dirname(dbFile), { recursive: true });
+
 if (fs.existsSync(dbFile)) {
-  try {
-    const raw = fs.readFileSync(dbFile, 'utf8');
-    dbData = JSON.parse(raw);
-    if (!dbData.users) dbData.users = [];
-  } catch (err) {
-    console.warn('Unable to read bookings.json, starting with an empty store.', err.message);
-    dbData = { bookings: [], users: [] };
+  const raw = fs.readFileSync(dbFile, 'utf8');
+  dbData = JSON.parse(raw);
+  if (!dbData || !Array.isArray(dbData.bookings)) {
+    throw new Error(`Booking store at ${dbFile} must contain a bookings array.`);
   }
+  if (!Array.isArray(dbData.users)) dbData.users = [];
 }
 
 function saveDb() {
-  fs.writeFileSync(dbFile, JSON.stringify(dbData, null, 2), 'utf8');
+  const tempFile = `${dbFile}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(tempFile, JSON.stringify(dbData, null, 2), 'utf8');
+    fs.renameSync(tempFile, dbFile);
+  } catch (err) {
+    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    throw err;
+  }
 }
 
 module.exports = {

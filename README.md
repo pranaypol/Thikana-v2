@@ -82,7 +82,7 @@ Thikana/
 ## Deploying
 
 - Any Node host works (Render, Railway, Fly.io, a VPS). Set `GOOGLE_API_KEY` (and optionally `STRIPE_SECRET_KEY`, `GMAIL_USER`, `GMAIL_PASS`) as environment variables on the host — don't commit `.env`.
-- `bookings.json` is a plain file on disk — fine for a demo/college project, but it won't survive across redeploys or scale to concurrent writers. For production-scale traffic, swap `db.js` for a real database (Postgres/MySQL/SQLite), keeping the same function signatures (`getBookingsByEmail`, `addBooking`, etc.) so the rest of the app doesn't need to change.
+- The booking store defaults to `bookings.json` in the project directory. Set `BOOKING_STORE_PATH` to a file on your host's persistent disk (for example, a mounted volume) to keep bookings across redeploys. The default local file, and local JSON files generally, won't survive ephemeral-host redeploys or safely support concurrent writers. For production-scale traffic, swap `db.js` for a real database (Postgres/MySQL/SQLite), keeping the same function signatures (`getBookingsByEmail`, `addBooking`, etc.) so the rest of the app doesn't need to change.
 
 ## Extending to real payments/reservations
 

@@ -185,50 +185,50 @@ $('#bookingForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const amount = updateBookingTotal();
   const paymentMethod = normalizePaymentMethod($('#bf_paymentMethod').value);
+  const submitButton = e.currentTarget.querySelector('button[type="submit"]');
 
   if (!amount || amount <= 0) {
     alert('Please select valid check-in/check-out dates and room count.');
     return;
   }
 
-  const paymentRes = await fetch('/api/payments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, currency: 'INR', paymentMethod })
-  });
-  const paymentData = await paymentRes.json();
-
-  if (!paymentRes.ok) {
-    alert(paymentData.error || 'Payment failed.');
-    return;
-  }
-
-  if (!paymentData.paid && paymentMethod !== 'pay_at_hotel') {
-    alert('Payment did not complete successfully. Please try again.');
-    return;
-  }
-
-  const payload = {
-    placeId: $('#bf_placeId').value,
-    hotelName: $('#bf_hotelName').value,
-    hotelAddress: $('#bf_hotelAddress').value,
-    checkIn: $('#bf_checkIn').value,
-    checkOut: $('#bf_checkOut').value,
-    rooms: Number($('#bf_rooms').value),
-    guests: Number($('#bf_guests').value),
-    pricePerNight: selectedHotelPrice,
-    totalAmount: amount,
-    totalPrice: amount,
-    guestName: $('#bf_name').value.trim(),
-    guestEmail: $('#bf_email').value.trim(),
-    guestPhone: $('#bf_phone').value.trim(),
-    paymentMethod,
-    paymentStatus: paymentData.status,
-    paymentProvider: paymentData.provider,
-    paymentReference: paymentData.payment_reference
-  };
-
+  submitButton.disabled = true;
   try {
+    const paymentRes = await fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, currency: 'INR', paymentMethod })
+    });
+    const paymentData = await paymentRes.json();
+
+    if (!paymentRes.ok) {
+      throw new Error(paymentData.error || 'Payment failed.');
+    }
+
+    if (!paymentData.paid && paymentMethod !== 'pay_at_hotel') {
+      throw new Error('Payment did not complete successfully. Please try again.');
+    }
+
+    const payload = {
+      placeId: $('#bf_placeId').value,
+      hotelName: $('#bf_hotelName').value,
+      hotelAddress: $('#bf_hotelAddress').value,
+      checkIn: $('#bf_checkIn').value,
+      checkOut: $('#bf_checkOut').value,
+      rooms: Number($('#bf_rooms').value),
+      guests: Number($('#bf_guests').value),
+      pricePerNight: selectedHotelPrice,
+      totalAmount: amount,
+      totalPrice: amount,
+      guestName: $('#bf_name').value.trim(),
+      guestEmail: $('#bf_email').value.trim(),
+      guestPhone: $('#bf_phone').value.trim(),
+      paymentMethod,
+      paymentStatus: paymentData.status,
+      paymentProvider: paymentData.provider,
+      paymentReference: paymentData.payment_reference
+    };
+
     const res = await fetch('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -245,7 +245,9 @@ $('#bookingForm').addEventListener('submit', async (e) => {
     showConfirmation(data.booking);
     e.target.reset();
   } catch (err) {
-    alert('Could not reach the server.');
+    alert(err.message || 'Could not complete the booking. Please try again.');
+  } finally {
+    submitButton.disabled = false;
   }
 });
 
